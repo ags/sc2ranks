@@ -25,6 +25,13 @@ class Character(object):
                 self.__dict__[key] = [Team(t) for t in json[key]]
             else:
                 self.__dict__[key] = json[key]
+    
+    def __eq__(self, character):
+        '''Compare characters based on unique battle.net ID'''
+        try:
+            return self.bnet_id == character.bnet_id
+        except Exception:
+            return False
 
 class CharacterError(Exception):
     '''Base exception class for API returns'''
@@ -53,7 +60,7 @@ class SC2RanksAPI(object):
         '''Returns base character data, acheivement points, character 
            code and battle.net ID info.
 
-           CharacterError thrown if no such character exists.
+           CharacterError raised if no such character exists.
         '''
         json = self.get('base/char/%s/%s$%s' % (region, name, char_id))
         return Character(json)
@@ -62,7 +69,7 @@ class SC2RanksAPI(object):
         '''Returns base character data and base data on the 
            player's teams.
 
-           CharacterError thrown if no such character exists.
+           CharacterError raised if no such character exists.
         '''
         json = self.get('base/teams/%s/%s$%s' % (region, name, char_id))
         return Character(json)
@@ -73,20 +80,50 @@ class SC2RanksAPI(object):
            for a given bracket. To find random teams can be specified 
            through the random parameter.
 
-           CharacterError thrown if no such character exists.
+           CharacterError raised if no such character exists.
         '''
         json = self.get('char/teams/%s/%s$%s/%s/%s' % 
                     (region, name, char_id, bracket, random))
         return Character(json)
 
+    def mass_base_characters(self, characters):
+        '''Pulls up to 100 characters at once.
+           `characters` parameter is a list of dictionaries in
+           the following form, either:
+
+           {'bnet_id', 'region', 'name' } 
+           or
+           {'code', 'region', 'name'}
+           where 'code' is the player's character code.
+
+           Returns a list of Character objects.
+
+           CharacterError raised if character does not match
+           parameters or if more than 100 characters are passed.
+        '''
+        data = [('characters[%s][%s]' % (characters.index(c), k), c[k])
+                        for c in characters for k in c]
+        json = self.get_encoded('mass/base/char/', data)
+        return [Character(c) for c in json]
+
+    def mass_base_characters_teams(self, characters, bracket=1, is_random=0):
+        '''
+        '''
+        data = [('team[bracket]', bracket), ('team[is_random]', is_random)]
+        data += [('characters[%s][%s]' % (characters.index(c), k), c[k])
+                        for c in characters for k in c]
+        json = self.get_encoded('mass/base/teams/', data)
+        return [Character(c) for c in json]
+
     def search(self, s_type, region, name, offset=0):
-        '''Returns first 10 characters battle.net ID and name that 
-           match search criteria and total number of matches.
+        '''Returns the battle.net ID and name of the first 10 
+           characters that match the search criteria and the total 
+           number of matches.
 
            `s_type` may be one of 'exact', 'contains', 'starts', 'ends'.
            `offset` may be specified to retrieve more characters.
 
-           CharacterError thrown if no characters match criteria.
+           CharacterError raised if no characters match criteria.
         '''
         json = self.get('search/%s/%s/%s/%s' % (s_type, region, name, offset))
         result = {'total' : json['total']}
@@ -97,7 +134,7 @@ class SC2RanksAPI(object):
                              bracket=1, random=0):
         '''Returns every team in a custom division.
 
-           CharacterError thrown if no characters have been added to
+           CharacterError raised if no characters have been added to
            the division or no such division exists.
         '''
         json = self.get('clist/%s/%s/%s/%s/%s' % 
@@ -108,6 +145,15 @@ class SC2RanksAPI(object):
         url = '%s/%s.json?appKey=%s' % (self.base_url, query, self.app_key)
         json = urllib.urlopen(url).read()
         result = _json_parser(json)
+        if 'error' in result:
+            raise CharacterError(result['error'])
+        return result
+
+    def get_encoded(self, url, data):
+        enc_data = urllib.urlencode(data)
+        url = urllib.urlopen('%s/%s?appKey=%s' % 
+                            (self.base_url, url, self.app_key), enc_data)
+        result = _json_parser(url.read())
         if 'error' in result:
             raise CharacterError(result['error'])
         return result
