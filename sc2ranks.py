@@ -23,6 +23,9 @@ class Character(object):
         for key in json:
             if key == 'teams':
                 self.__dict__[key] = [Team(t) for t in json[key]]
+                # only 1 team
+                if len(self.__dict__[key]) == 1:
+                    self.__dict__['team'] = self.__dict__[key][0]
             else:
                 self.__dict__[key] = json[key]
     
