@@ -33,6 +33,10 @@ class Character(object):
         except Exception:
             return False
 
+    def __repr__(self):
+        '''Returns a string of form name#character_code'''
+        return '%s#%s' % (self.name, self.character_code)
+
 class CharacterError(Exception):
     '''Base exception class for API returns'''
     pass
@@ -102,7 +106,7 @@ class SC2RanksAPI(object):
            parameters or if more than 100 characters are passed.
         '''
         data = [('characters[%s][%s]' % (characters.index(c), k), c[k])
-                        for c in characters for k in c]
+                for c in characters for k in c]
         json = self.get_encoded('mass/base/char/', data)
         return [Character(c) for c in json]
 
@@ -111,7 +115,7 @@ class SC2RanksAPI(object):
         '''
         data = [('team[bracket]', bracket), ('team[is_random]', is_random)]
         data += [('characters[%s][%s]' % (characters.index(c), k), c[k])
-                        for c in characters for k in c]
+                for c in characters for k in c]
         json = self.get_encoded('mass/base/teams/', data)
         return [Character(c) for c in json]
 

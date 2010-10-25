@@ -9,9 +9,15 @@ class TestSC2RanksAPI(unittest.TestCase):
    
     def setUp(self):
         self.api = sc2ranks.SC2RanksAPI()
+
         tlo_team = {
             'division': u'Division Tal\u2019darim Theta'
         }
+        
+        socke_team = {
+            'division': u'Division Feld Delta'
+        }
+
         tlo = {
             'name': 'LiquidTLO',
             'character_code': 481,
@@ -23,8 +29,9 @@ class TestSC2RanksAPI(unittest.TestCase):
         socke = {
             'name': 'aTnSocke', 
             'region': 'eu', 
-            'bnet_id': 17256,
-            'character_code': 521
+            'bnet_id': 172567,
+            'character_code': 521,
+            'teams': [socke_team]
         }
 
         self.tlo = sc2ranks.Character(tlo)
@@ -44,12 +51,9 @@ class TestSC2RanksAPI(unittest.TestCase):
         c = self.api.base_character_team(self.tlo.name, 
                                          self.tlo.character_code, 
                                          self.tlo.region)
-        # find tlo's 1v1 team
-        for team in c.teams:
-            if team.bracket == 1:
-                break
 
-        self.assertEqual(team.division, self.tlo.teams[0].division)
+        tlo_td = self.tlo.teams[0].division
+        self.assertTrue(any(t.division == tlo_td for t in c.teams))
 
     def test_character_equal(self):
         self.assertTrue(self.tlo == self.tlo)
@@ -71,11 +75,10 @@ class TestSC2RanksAPI(unittest.TestCase):
                  {'name': self.socke.name,
                   'region': self.socke.region,
                   'code': self.socke.character_code
-                 }
-               ]
+                 } ]
         l = self.api.mass_base_characters(data)
-        for c in l:
-            print c.__dict__
+        self.assertTrue(self.tlo in l)
+        self.assertTrue(self.socke in l)
 
     def test_mass_base_characters_teams(self):
         data = [ {'name': self.tlo.name,
@@ -85,17 +88,20 @@ class TestSC2RanksAPI(unittest.TestCase):
                  {'name': self.socke.name,
                   'region': self.socke.region,
                   'code': self.socke.character_code
-                 }
-               ]
+                 } ]
         l = self.api.mass_base_characters_teams(data, 1, 0)
-        for c in l:
-            print c.__dict__
+        self.assertTrue(self.tlo in l)
+        self.assertTrue(self.socke in l)
 
+        for player in [self.socke, self.tlo]:
+            c = l[l.index(player)]
+            td = player.teams[0].division
+            self.assertTrue(any(t.division == td for t in c.teams))
 
     def test_custom_division_list(self):
         l = self.api.custom_division_list(1)
-        # TODO write a better test for this
-        self.assertTrue(len(l) == 16)
+
+        self.assertTrue(any(self.socke in t.members for t in l))
 
 if __name__ == '__main__':
     unittest.main()
